@@ -160,20 +160,20 @@ $('table tr td.oquant input').on("keyup",function(){
 </script>
 <script type="text/javascript"><!--
 $('#button-filter').on('click', function() {
-	var url = 'index.php?route=module/store_sync&token=<?php echo $token; ?>';
+  var url = 'index.php?route=module/store_sync&token=<?php echo $token; ?>';
 
-	var filter_name = $('input[name=\'filter_name\']').val();
+  var filter_name = $('input[name=\'filter_name\']').val();
 
-	if (filter_name) {
-		url += '&filter_name=' + encodeURIComponent(filter_name);
-	}
+  if (filter_name) {
+    url += '&filter_name=' + encodeURIComponent(filter_name);
+  }
 
-	var filter_model = $('input[name=\'filter_model\']').val();
+  var filter_model = $('input[name=\'filter_model\']').val();
 
-	if (filter_model) {
-		url += '&filter_model=' + encodeURIComponent(filter_model);
-	}
+  if (filter_model) {
+    url += '&filter_model=' + encodeURIComponent(filter_model);
+  }
 
-	location = url;
+  location = url;
 });
 //--></script>
