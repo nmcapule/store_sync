@@ -111,7 +111,7 @@ class ControllerModuleStoreSync extends Controller {
 
     $start = ($page - 1) * $this->config->get('config_limit_admin');
     $limit = $this->config->get('config_limit_admin');
-    
+
     $this->setpagination($data);
 
     $setting = $this->model_setting_setting->getSetting('store_sync');
@@ -235,7 +235,8 @@ class ControllerModuleStoreSync extends Controller {
       $userid = $setting['store_sync_lzusername'];
       $apikey = $setting['store_sync_lzapikey'];
 
-      $this->model_tool_store_sync->sync($userid, $apikey);
+      // $this->model_tool_store_sync->sync($userid, $apikey);
+      $this->model_tool_store_sync->lzSyncProducts($userid, $apikey);
 
       $setting['store_sync_lzlast_sync'] = (new DateTime())->format('Y-m-d H:i:s');
       $this->model_setting_setting->editSetting('store_sync', $setting);

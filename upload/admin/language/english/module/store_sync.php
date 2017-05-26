@@ -16,5 +16,5 @@ $_['entry_apikey']     = 'API Key';
 $_['error_permission'] = 'Warning: You do not have permission to modify store sync module!';
 
 // Tabs
-$_['tab_general']      = 'General';
+$_['tab_general']      = 'List';
 $_['tab_lazada']       = 'Lazada';

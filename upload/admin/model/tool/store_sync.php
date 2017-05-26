@@ -14,36 +14,6 @@ class ModelToolStoreSync extends Model {
     $this->db->query($sql);
   }
 
-  public function sync($userid, $apikey) {
-    // Drop everything from table
-    $this->db->query("DELETE FROM " . DB_PREFIX . "lazada_product");
-
-    // Insert newfound rows!
-    $offset = 0;
-    $limit = 500;
-
-    $c = $this->query($userid, $apikey, 'GetProducts', $offset, $limit);
-
-    $rows = array();
-    foreach ($c['SuccessResponse']['Body']['Products'] as $key => $value) {
-      $attr = $value['Attributes'];
-      $skus = $value['Skus'][0];
-
-      $row = join(',', array(
-        "'" . $this->db->escape($skus['SellerSku']) . "'",
-        "'" . $this->db->escape($skus['ShopSku']) . "'",
-        "'" . $this->db->escape($skus['Status']) . "'",
-        $this->db->escape($skus['quantity']),
-        $this->db->escape($skus['price']),
-        // $skus['Available'],
-      ));
-
-      array_push($rows, '(' . $row . ')');
-    }
-
-    $this->db->query("INSERT INTO " . DB_PREFIX . "lazada_product (model, sku, status, quantity, price) VALUES " . join(',', $rows));
-  }
-
   public function getProducts($data = array()) {
     $sql = "  SELECT pd.name as name, p.model as model, p.quantity as quantity, p.price as price, p.status as status, lp.status as lz_status, lp.quantity as lz_quantity, lp.sku as lz_sku";
     $sql .= " FROM " . DB_PREFIX . "product p";
@@ -71,6 +41,10 @@ class ModelToolStoreSync extends Model {
       } elseif ($data['filter_lz_exists'] == '2') {
         $sql .= " AND lp.status IS NULL";
       }
+    }
+
+    if (!empty($data['filter_lz_desync'])) {
+      $sql .= " AND lp.quantity IS NOT NULL AND p.quantity != lp.quantity";
     }
 
     if (isset($data['filter_price']) && !is_null($data['filter_price'])) {
@@ -156,6 +130,10 @@ class ModelToolStoreSync extends Model {
       }
     }
 
+    if (!empty($data['filter_lz_desync'])) {
+      $sql .= " AND lp.quantity IS NOT NULL AND p.quantity != lp.quantity";
+    }
+
     if (isset($data['filter_price']) && !is_null($data['filter_price'])) {
       $sql .= " AND p.price LIKE '" . $this->db->escape($data['filter_price']) . "%'";
     }
@@ -192,6 +170,105 @@ class ModelToolStoreSync extends Model {
     $payload = $xml->asXML();
 
     return $this->query($userid, $apikey, 'UpdatePriceQuantity', 0, 100, $payload);
+  }
+
+  public function sync($userid, $apikey) {
+    // Drop everything from table
+    $this->db->query("DELETE FROM " . DB_PREFIX . "lazada_product");
+
+    $products = $this->lzProducts($userid, $apikey);
+    $rows = array();
+
+    foreach ($products as $p) {
+      $row = join(',', array(
+        "'" . $this->db->escape($p['model']) . "'",
+        "'" . $this->db->escape($p['sku']) . "'",
+        "'" . $this->db->escape($p['status']) . "'",
+        $this->db->escape($p['quantity']),
+        $this->db->escape($p['price']),
+      ));
+
+      array_push($rows, '(' . $row . ')');
+    }
+
+    $this->db->query("INSERT INTO " . DB_PREFIX . "lazada_product (model, sku, status, quantity, price) VALUES " . join(',', $rows));
+  }
+
+  public function lzDesyncedProducts() {
+  }
+
+  public function lzProducts($userid, $apikey) {
+    // TODO: Make this dynamic
+    $total = 1000;
+
+    $increment = 500;
+
+    $rows = array();
+
+    for ($offset = 0; $offset < $total; $offset += $increment) {
+      $c = $this->query($userid, $apikey, 'GetProducts', $offset, $increment);
+
+      foreach ($c['SuccessResponse']['Body']['Products'] as $key => $value) {
+        $skus = $value['Skus'][0];
+
+        $row = array(
+          'model' => $skus['SellerSku'],
+          'sku' => $skus['ShopSku'],
+          'status' => $skus['Status'],
+          'quantity' => $skus['quantity'],
+          'price' => $skus['price'],
+        );
+
+        array_push($rows, $row);
+      }
+    }
+
+    return $rows;
+  }
+
+    // lzSyncProducts syncs product quantities from opencart to lazada.
+  public function lzSyncProducts($userid, $apikey) {
+    $this->sync($userid, $apikey);
+
+    // Get all opencart products not synced with lazada.
+    $products = $this->getProducts(array('filter_lz_desync' => '1'));
+
+    // Update lazada!
+    // maximum items per batch is 50!
+    $increment = 50;
+    $total = count($products);
+
+    for ($offset = 0; $offset < $total; $offset += $increment) {
+      // Make quantity update requests!
+      $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"utf-8\" ?><Request></Request>");
+      $xmlskus = $xml->addChild('Product')->addChild('Skus');
+
+      for ($i = $offset; $i < $offset + $increment && $i < $total; $i++) {
+        $p = $products[$i];
+
+        $xmlsku = $xmlskus->addChild('Sku');
+        $xmlsku->addChild('SellerSku', $p['model']);
+        $xmlsku->addChild('Quantity', $p['quantity']);
+        $xmlsku->addChild('Price');
+        $xmlsku->addChild('SalePrice');
+        $xmlsku->addChild('SaleStartDate');
+        $xmlsku->addChild('SaleEndDate');
+      }
+
+      $payload = $xml->asXML();
+
+      $ret = $this->query($userid, $apikey, 'UpdatePriceQuantity', 0, 100, $payload);
+      if (isset($ret['ErrorResponse'])) {
+        error_log($ret['ErrorResponse']);
+      }
+    }
+
+    // From lazada to opencart
+    $this->sync($userid, $apikey);
+  }
+
+  public function lzCreateProduct($userid, $apikey, $sku) {
+    // TODO
   }
 
   public function query($user, $key, $action, $offset=0, $limit=100, $payload='') {
