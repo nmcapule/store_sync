@@ -15,7 +15,7 @@ class ModelToolStoreSync extends Model {
   }
 
   public function getProducts($data = array()) {
-    $sql = "  SELECT pd.name as name, p.model as model, p.quantity as quantity, p.price as price, p.status as status, lp.status as lz_status, lp.quantity as lz_quantity, lp.sku as lz_sku";
+    $sql = "  SELECT p.product_id as product_id, pd.name as name, pd.description as description, p.model as model, p.quantity as quantity, p.price as price, p.status as status, lp.status as lz_status, lp.quantity as lz_quantity, lp.sku as lz_sku";
     $sql .= " FROM " . DB_PREFIX . "product p";
     $sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd";
     $sql .= "   ON (p.product_id = pd.product_id)";
@@ -194,12 +194,8 @@ class ModelToolStoreSync extends Model {
     $this->db->query("INSERT INTO " . DB_PREFIX . "lazada_product (model, sku, status, quantity, price) VALUES " . join(',', $rows));
   }
 
-  public function lzDesyncedProducts() {
-  }
-
   public function lzProducts($userid, $apikey) {
-    // TODO: Make this dynamic
-    $total = 1000;
+    $total = $this->getTotalProducts();
 
     $increment = 500;
 
@@ -228,6 +224,9 @@ class ModelToolStoreSync extends Model {
 
     // lzSyncProducts syncs product quantities from opencart to lazada.
   public function lzSyncProducts($userid, $apikey) {
+    // $this->lzCreateProduct($userid, $apikey, '2751');
+    // return
+
     $this->sync($userid, $apikey);
 
     // Get all opencart products not synced with lazada.
@@ -268,6 +267,50 @@ class ModelToolStoreSync extends Model {
   }
 
   public function lzCreateProduct($userid, $apikey, $sku) {
+    $this->load->model('catalog/product');
+
+    $p = $this->getProducts(array('filter_model' => $sku))[0];
+    $pi = $this->model_catalog_product->getProductImages($p['product_id']);
+
+    $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"utf-8\" ?><Request></Request>");
+    $xmlproduct = $xml->addChild('Product');
+    // $xmlproduct->addChild('PrimaryCategory', ???)
+
+    $xmlskus = $xmlproduct->addChild('Skus');
+
+    $xmlsku = $xmlskus->addChild('Sku');
+    $xmlsku->addChild('name', $p['name']);
+
+    $doc = html_entity_decode($p['description']);
+    $doc = preg_replace('#<p[^>]+>#', '|', $doc);
+    $doc = preg_replace('#&nbsp;#', ' ', $doc);
+    $docs = explode('|', $doc);
+    $nodes = array();
+    foreach ($docs as $item) {
+      if (strlen(trim(strip_tags($item))) <= 0) {
+        continue;
+      }
+      array_push($nodes, strip_tags($item));
+    }
+    $short_description = $nodes[0];
+    // if (isset($nodes[1])) {
+    //   $short_description = $nodes[1];
+    // }
+
+    $xmlsku->addChild('short_description', $short_description);
+    $xmlsku->addChild('SellerSku', $p['model']);
+    $xmlsku->addChild('quantity', $p['quantity']);
+    $xmlsku->addChild('price', $p['price'] + (0.0571 * $p['price']) + 140.0);
+    if (count($pi) > 0) {
+      $xmli = $xmlsku->addChild('Images');
+      foreach($pi as $im) {
+        $xmli->addChild('Image', 'https://circuit.rocks/image/' . $im['image']);
+      }
+    }
+
+    $payload = $xml->asXML();
+
+    error_log($payload);
     // TODO
   }
 
