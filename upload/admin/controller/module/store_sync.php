@@ -127,6 +127,20 @@ class ControllerModuleStoreSync extends Controller {
     }
     if (isset($setting['store_sync_lzlast_sync'])) {
       $data['store_sync_lzlast_sync'] = $setting['store_sync_lzlast_sync'];
+
+      $ts_lzlast_sync = strtotime($data['store_sync_lzlast_sync']);
+
+      // If more than an hour has passed, force downsync.
+      // if (time() - $ts_lzlast_sync)
+      if (time() - $ts_lzlast_sync > 1800) {
+        $userid = $setting['store_sync_lzusername'];
+        $apikey = $setting['store_sync_lzapikey'];
+
+        $this->model_tool_store_sync->sync($userid, $apikey);
+
+        $setting['store_sync_lzlast_sync'] = (new DateTime())->format('Y-m-d H:i:s');
+        $this->model_setting_setting->editSetting('store_sync', $setting);
+      }
     } else {
       $data['store_sync_lzlast_sync'] = '';
     }
@@ -235,8 +249,7 @@ class ControllerModuleStoreSync extends Controller {
       $userid = $setting['store_sync_lzusername'];
       $apikey = $setting['store_sync_lzapikey'];
 
-      // $this->model_tool_store_sync->sync($userid, $apikey);
-      $this->model_tool_store_sync->lzSyncProducts($userid, $apikey);
+      $this->model_tool_store_sync->sync($userid, $apikey);
 
       $setting['store_sync_lzlast_sync'] = (new DateTime())->format('Y-m-d H:i:s');
       $this->model_setting_setting->editSetting('store_sync', $setting);
@@ -259,6 +272,38 @@ class ControllerModuleStoreSync extends Controller {
     $result = $this->model_tool_store_sync->savequantity($userid, $apikey, $sku, $quantity);
 
     $this->response->setOutput(json_encode($result));
+  }
+
+  public function saveosync() {
+    $this->load->model('tool/store_sync');
+    $this->load->model('setting/setting');
+
+    $sku = $this->request->get['sku'];
+
+    $setting = $this->model_setting_setting->getSetting('store_sync');
+    $userid = $setting['store_sync_lzusername'];
+    $apikey = $setting['store_sync_lzapikey'];
+
+    $product = $this->model_tool_store_sync->getProducts(array('filter_model' => $sku))[0];
+
+    $result = $this->model_tool_store_sync->savequantity($userid, $apikey, $sku, $product['quantity']);
+
+    $this->response->setOutput(json_encode($result));
+  }
+
+  public function saveoupload() {
+    $this->load->model('tool/store_sync');
+    $this->load->model('setting/setting');
+
+    $sku = $this->request->get['sku'];
+
+    $setting = $this->model_setting_setting->getSetting('store_sync');
+    $userid = $setting['store_sync_lzusername'];
+    $apikey = $setting['store_sync_lzapikey'];
+
+    $product = $this->model_tool_store_sync->lzCreateProduct($userid, $apikey, $sku);
+
+    $this->response->setOutput(json_encode($product));
   }
 
   protected function validate() {

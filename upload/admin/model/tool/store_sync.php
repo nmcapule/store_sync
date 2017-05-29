@@ -15,10 +15,12 @@ class ModelToolStoreSync extends Model {
   }
 
   public function getProducts($data = array()) {
-    $sql = "  SELECT p.product_id as product_id, pd.name as name, pd.description as description, p.model as model, p.quantity as quantity, p.price as price, p.status as status, lp.status as lz_status, lp.quantity as lz_quantity, lp.sku as lz_sku";
+    $sql = "  SELECT p.product_id as product_id, pd.name as name, m.name as manufacturer, pd.description as description, p.model as model, p.quantity as quantity, p.price as price, p.status as status, lp.status as lz_status, lp.quantity as lz_quantity, lp.sku as lz_sku";
     $sql .= " FROM " . DB_PREFIX . "product p";
     $sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd";
     $sql .= "   ON (p.product_id = pd.product_id)";
+    $sql .= " LEFT JOIN " . DB_PREFIX . "manufacturer m";
+    $sql .= "   ON (p.manufacturer_id = m.manufacturer_id)";
     $sql .= " LEFT JOIN " . DB_PREFIX . "lazada_product lp";
     $sql .= "   ON (p.model = lp.model)";
     $sql .= " WHERE pd.language_id = '" . (int)$this->config->get('config_language_id') . "'";
@@ -224,9 +226,6 @@ class ModelToolStoreSync extends Model {
 
     // lzSyncProducts syncs product quantities from opencart to lazada.
   public function lzSyncProducts($userid, $apikey) {
-    // $this->lzCreateProduct($userid, $apikey, '2751');
-    // return
-
     $this->sync($userid, $apikey);
 
     // Get all opencart products not synced with lazada.
@@ -274,13 +273,13 @@ class ModelToolStoreSync extends Model {
 
     $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"utf-8\" ?><Request></Request>");
     $xmlproduct = $xml->addChild('Product');
-    // $xmlproduct->addChild('PrimaryCategory', ???)
+    $xmlproduct->addChild('PrimaryCategory', 5160);
+    $xmlproduct->addChild('SPUId');
+    $xmlproduct->addChild('AssociatedSku');
 
-    $xmlskus = $xmlproduct->addChild('Skus');
-
-    $xmlsku = $xmlskus->addChild('Sku');
-    $xmlsku->addChild('name', $p['name']);
-
+    $xmlattr = $xmlproduct->addChild('Attributes');
+    $xmlattr->addChild('name', $p['name']);
+    $xmlattr->addChild('description', $p['description']);
     $doc = html_entity_decode($p['description']);
     $doc = preg_replace('#<p[^>]+>#', '|', $doc);
     $doc = preg_replace('#&nbsp;#', ' ', $doc);
@@ -293,25 +292,47 @@ class ModelToolStoreSync extends Model {
       array_push($nodes, strip_tags($item));
     }
     $short_description = $nodes[0];
-    // if (isset($nodes[1])) {
-    //   $short_description = $nodes[1];
-    // }
+    $xmlattr->addChild('short_description', $short_description);
+    $xmlattr->addChild('brand', $p['manufacturer']);
+    $xmlattr->addChild('model', $sku);
+    $xmlattr->addChild('warranty', '7 Days');
+    $xmlattr->addChild('warranty_type', 'No Warranty');
 
-    $xmlsku->addChild('short_description', $short_description);
+    $lzprice = round($p['price'] + (0.0571 * $p['price']) + 140.0, 2, PHP_ROUND_HALF_UP);
+
+    $xmlsku = $xmlproduct->addChild('Skus')->addChild('Sku');
     $xmlsku->addChild('SellerSku', $p['model']);
     $xmlsku->addChild('quantity', $p['quantity']);
-    $xmlsku->addChild('price', $p['price'] + (0.0571 * $p['price']) + 140.0);
+    $xmlsku->addChild('price', $lzprice);
+    $xmlsku->addChild('package_length', 10);
+    $xmlsku->addChild('package_height', 10);
+    $xmlsku->addChild('package_width', 10);
+    $xmlsku->addChild('package_weight', 0.5);
+    $xmlsku->addChild('package_content', '1 x ' . $p['name']);
     if (count($pi) > 0) {
       $xmli = $xmlsku->addChild('Images');
       foreach($pi as $im) {
-        $xmli->addChild('Image', 'https://circuit.rocks/image/' . $im['image']);
+        $xmli->addChild('Image', $this->config->get('config_url') . 'image/' . $im['image']);
       }
     }
 
     $payload = $xml->asXML();
 
-    error_log($payload);
-    // TODO
+    $ret = $this->query($userid, $apikey, 'CreateProduct', 0, 100, $payload);
+    if (isset($ret['ErrorResponse'])) {
+      error_log(print_r($ret['ErrorResponse'], true));
+    } else {
+      $row = join(',', array(
+        "'" . $sku . "'",
+        "'Pending Lazada Sync'",
+        "'Pending Lazada Sync'",
+        $p['quantity'],
+        $lzprice,
+      ));
+
+      $this->db->query("INSERT INTO " . DB_PREFIX . "lazada_product (model, sku, status, quantity, price) VALUES (" . $row . ")");
+    }
+    return $ret;
   }
 
   public function query($user, $key, $action, $offset=0, $limit=100, $payload='') {

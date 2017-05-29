@@ -65,23 +65,26 @@
                       <?php } ?>
                     </td>
                     <td class="text-center"><?php if ($sort == 'quantity') { ?>
-                      <a href="<?php echo $sort_quantity; ?>" class="<?php echo strtolower($order); ?>">Quantity - Local</a>
+                      <a href="<?php echo $sort_quantity; ?>" class="<?php echo strtolower($order); ?>">Quantity</a>
                       <?php } else { ?>
-                      <a href="<?php echo $sort_quantity; ?>">Quantity - Local</a>
+                      <a href="<?php echo $sort_quantity; ?>">Quantity</a>
                       <?php } ?>
                     </td>
+                    <!--
                     <td class="text-center"><?php if ($sort == 'lz_quantity') { ?>
                       <a href="<?php echo $sort_lz_quantity; ?>" class="<?php echo strtolower($order); ?>">Quantity - Lazada</a>
                       <?php } else { ?>
                       <a href="<?php echo $sort_lz_quantity; ?>">Quantity - Lazada</a>
                       <?php } ?>
                     </td>
+                    -->
                     <td class="text-center"><?php if ($sort == 'lz_sku') { ?>
                       <a href="<?php echo $sort_lz_sku; ?>" class="<?php echo strtolower($order); ?>">SKU - Lazada</a>
                       <?php } else { ?>
                       <a href="<?php echo $sort_lz_sku; ?>">SKU - Lazada</a>
                       <?php } ?>
                     </td>
+                    <td class="text-center" style="width:96px">Lazada</td>
                   </tr>
                 </thead>
                 <tbody>
@@ -90,7 +93,13 @@
                   <tr>
                     <td class="text-left"><?php echo $product['name'] ?></td>
                     <td class="text-center"><?php echo $product['model'] ?></td>
-                    <td class="text-center"><?php echo $product['quantity'] ?></td>
+                    <td class="text-center">
+                      <?php if ($product['lz_quantity'] != $product['quantity']) {?>
+                        <span class="text-warning"><?php echo $product['lz_quantity'] ?></span> &raquo;
+                      <?php } ?>
+                      <?php echo $product['quantity'] ?>
+                    </td>
+                    <!--
                     <td class="text-center oquant">
                       <input type="number" class="formcontrol"
                           <?php if ($product['lz_quantity'] == '') {?>
@@ -100,7 +109,21 @@
                           value="<?php echo $product['lz_quantity'] ?>"
                           placeholder="Not Available"/>
                     </td>
+                    -->
                     <td class="text-center"><?php echo $product['lz_sku'] ?></td>
+                    <td class="text-center ostatus">
+                      <?php if ($product['lz_quantity'] == '') { ?>
+                        <button class="btn btn-default oupload" name="<?php echo $product['model']?>">
+                          <i class="fa fa-upload" aria-hidden="true"></i> Upload
+                        </button>
+                      <?php } else if ($product['lz_quantity'] != $product['quantity']) { ?>
+                        <button class="btn btn-default osync" name="<?php echo $product['model']?>">
+                          <i class="fa fa-refresh text-warning" aria-hidden="true"></i> Update
+                        </button>
+                      <?php } else { ?>
+                        <i class="fa fa-check-circle text-success" aria-hidden="true"></i> Ok
+                      <?php } ?>
+                    </td>
                   </tr>
                   <?php } ?>
                   <?php } ?>
@@ -154,6 +177,44 @@ $('table tr td.oquant input').on("keyup",function(){
         //  $('tr.'+id+' td.oquant').css("background","rgb(164, 255, 66)");
         //   $("tr."+id+" div.currentquantity").html(t.quantity);
         //   $("tr."+id+" div.currentquantity").css("font-size","16px");
+      }
+  });
+});
+$('table tr td.ostatus button.osync').on('click', function() {
+  $(this).attr('disabled', 'disabled');
+  $(this).text('Loading...');
+
+  var sku = $(this).attr('name');
+  var btn = $(this);
+
+  // $.ajax({
+  //     url: 'index.php?route=module/store_sync/saveosync&token=<?php echo $token; ?>&sku='+sku,
+  //     dataType: 'json',
+  //     success: function(t) {
+  //       console.log(t);
+  //       btn.html('<i class="fa fa-check-circle text-success" aria-hidden="true"></i> Synced');
+  //     },
+  //     error: function() {
+  //       btn.html('<i class="fa fa-check-circle text-warning" aria-hidden="true"></i> Fail');
+  //     }
+  // });
+});
+$('table tr td.ostatus button.oupload').on('click', function() {
+  $(this).attr('disabled', 'disabled');
+  $(this).text('Loading...');
+
+  var sku = $(this).attr('name');
+  var btn = $(this);
+
+  $.ajax({
+      url: 'index.php?route=module/store_sync/saveoupload&token=<?php echo $token; ?>&sku='+sku,
+      dataType: 'json',
+      success: function(t) {
+        console.log(t);
+        btn.html('<i class="fa fa-check-circle text-success" aria-hidden="true"></i> Synced');
+      },
+      error: function() {
+        btn.html('<i class="fa fa-check-circle text-warning" aria-hidden="true"></i> Fail');
       }
   });
 });
