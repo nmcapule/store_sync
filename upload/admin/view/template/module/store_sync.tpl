@@ -84,7 +84,12 @@
                       <a href="<?php echo $sort_lz_sku; ?>">SKU - Lazada</a>
                       <?php } ?>
                     </td>
-                    <td class="text-center" style="width:96px">Lazada</td>
+                    <td class="text-center" style="width:96px"><?php if ($sort == 'lz_sync_status') { ?>
+                      <a href="<?php echo $sort_lz_sync_status; ?>" class="<?php echo strtolower($order); ?>">Lazada</a>
+                      <?php } else { ?>
+                      <a href="<?php echo $sort_lz_sync_status; ?>">Lazada</a>
+                      <?php } ?>
+                    </td>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,17 +192,17 @@ $('table tr td.ostatus button.osync').on('click', function() {
   var sku = $(this).attr('name');
   var btn = $(this);
 
-  // $.ajax({
-  //     url: 'index.php?route=module/store_sync/saveosync&token=<?php echo $token; ?>&sku='+sku,
-  //     dataType: 'json',
-  //     success: function(t) {
-  //       console.log(t);
-  //       btn.html('<i class="fa fa-check-circle text-success" aria-hidden="true"></i> Synced');
-  //     },
-  //     error: function() {
-  //       btn.html('<i class="fa fa-check-circle text-warning" aria-hidden="true"></i> Fail');
-  //     }
-  // });
+  $.ajax({
+      url: 'index.php?route=module/store_sync/saveosync&token=<?php echo $token; ?>&sku='+sku,
+      dataType: 'json',
+      success: function(t) {
+        console.log(t);
+        btn.html('<i class="fa fa-check-circle text-success" aria-hidden="true"></i> Synced');
+      },
+      error: function() {
+        btn.html('<i class="fa fa-check-circle text-warning" aria-hidden="true"></i> Fail');
+      }
+  });
 });
 $('table tr td.ostatus button.oupload').on('click', function() {
   $(this).attr('disabled', 'disabled');

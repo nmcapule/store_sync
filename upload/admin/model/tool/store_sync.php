@@ -15,7 +15,7 @@ class ModelToolStoreSync extends Model {
   }
 
   public function getProducts($data = array()) {
-    $sql = "  SELECT p.product_id as product_id, pd.name as name, m.name as manufacturer, pd.description as description, p.model as model, p.quantity as quantity, p.price as price, p.status as status, lp.status as lz_status, lp.quantity as lz_quantity, lp.sku as lz_sku";
+    $sql = "  SELECT p.product_id as product_id, pd.name as name, m.name as manufacturer, pd.description as description, p.model as model, p.quantity as quantity, p.price as price, p.status as status, lp.status as lz_status, lp.quantity as lz_quantity, lp.sku as lz_sku, IF(lp.sku IS NULL, 1, IF(lp.quantity != p.quantity, 0, 2)) as lz_sync_status";
     $sql .= " FROM " . DB_PREFIX . "product p";
     $sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd";
     $sql .= "   ON (p.product_id = pd.product_id)";
@@ -72,6 +72,7 @@ class ModelToolStoreSync extends Model {
       'lz_quantity',
       'lz_sku',
       'lz_status',
+      'lz_sync_status',
     );
 
     if (isset($data['sort']) && in_array($data['sort'], $sort_data)) {
