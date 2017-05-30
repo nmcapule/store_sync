@@ -78,16 +78,16 @@
                       <?php } ?>
                     </td>
                     -->
-                    <td class="text-center"><?php if ($sort == 'lz_sku') { ?>
-                      <a href="<?php echo $sort_lz_sku; ?>" class="<?php echo strtolower($order); ?>">SKU - Lazada</a>
+                    <td class="text-center" style="width:128px"><?php if ($sort == 'lz_sku') { ?>
+                      <a href="<?php echo $sort_lz_status; ?>" class="<?php echo strtolower($order); ?>">Lazada Status</a>
                       <?php } else { ?>
-                      <a href="<?php echo $sort_lz_sku; ?>">SKU - Lazada</a>
+                      <a href="<?php echo $sort_lz_status; ?>">Lazada Status</a>
                       <?php } ?>
                     </td>
                     <td class="text-center" style="width:96px"><?php if ($sort == 'lz_sync_status') { ?>
-                      <a href="<?php echo $sort_lz_sync_status; ?>" class="<?php echo strtolower($order); ?>">Lazada</a>
+                      <a href="<?php echo $sort_lz_sync_status; ?>" class="<?php echo strtolower($order); ?>">Lazada Action</a>
                       <?php } else { ?>
-                      <a href="<?php echo $sort_lz_sync_status; ?>">Lazada</a>
+                      <a href="<?php echo $sort_lz_sync_status; ?>">Lazada Action</a>
                       <?php } ?>
                     </td>
                   </tr>
@@ -115,7 +115,7 @@
                           placeholder="Not Available"/>
                     </td>
                     -->
-                    <td class="text-center"><?php echo $product['lz_sku'] ?></td>
+                    <td class="text-left"><?php echo $product['lz_status'] ?></td>
                     <td class="text-center ostatus">
                       <?php if ($product['lz_quantity'] == '') { ?>
                         <button class="btn btn-default oupload" name="<?php echo $product['model']?>">

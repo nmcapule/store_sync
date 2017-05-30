@@ -15,7 +15,27 @@ class ModelToolStoreSync extends Model {
   }
 
   public function getProducts($data = array()) {
-    $sql = "  SELECT p.product_id as product_id, pd.name as name, m.name as manufacturer, pd.description as description, p.model as model, p.quantity as quantity, p.price as price, p.status as status, lp.status as lz_status, lp.quantity as lz_quantity, lp.sku as lz_sku, IF(lp.sku IS NULL, 1, IF(lp.quantity != p.quantity, 0, 2)) as lz_sync_status";
+    $sql = "SELECT
+              p.product_id as product_id,
+              pd.name as name,
+              m.name as manufacturer,
+              pd.description as description,
+              p.model as model,
+              p.quantity as quantity,
+              p.price as price,
+              p.status as status,
+              lp.quantity as lz_quantity,
+              lp.sku as lz_sku,
+              CASE
+                WHEN lp.quantity != p.quantity THEN 'Desync quantity'
+                WHEN lp.sku IS NULL THEN 'Not uploaded'
+                ELSE lp.status
+              END as lz_status,
+              CASE
+                WHEN lp.sku IS NULL THEN 1
+                WHEN lp.quantity != p.quantity THEN 2
+                ELSE 0
+              END as lz_sync_status";
     $sql .= " FROM " . DB_PREFIX . "product p";
     $sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd";
     $sql .= "   ON (p.product_id = pd.product_id)";
@@ -155,9 +175,6 @@ class ModelToolStoreSync extends Model {
   }
 
   public function savequantity($userid, $apikey, $sku, $quantity) {
-    // Save changes to local
-    $this->db->query("UPDATE  " . DB_PREFIX . "lazada_product SET quantity = '".(int)$quantity."' WHERE model = '".$sku."'");
-
     // Make request
     $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"utf-8\" ?><Request></Request>");
     $xmlskus = $xml->addChild('Product')->addChild('Skus');
@@ -172,7 +189,15 @@ class ModelToolStoreSync extends Model {
 
     $payload = $xml->asXML();
 
-    return $this->query($userid, $apikey, 'UpdatePriceQuantity', 0, 100, $payload);
+    $ret = $this->query($userid, $apikey, 'UpdatePriceQuantity', 0, 100, $payload);
+    if (isset($ret['ErrorResponse'])) {
+      error_log(print_r($ret['ErrorResponse'], true));
+    } else {
+      // Save changes to local
+      $this->db->query("UPDATE  " . DB_PREFIX . "lazada_product SET quantity = '".(int)$quantity."' WHERE model = '".$sku."'");
+    }
+
+    return $ret
   }
 
   public function sync($userid, $apikey) {
@@ -210,10 +235,24 @@ class ModelToolStoreSync extends Model {
       foreach ($c['SuccessResponse']['Body']['Products'] as $key => $value) {
         $skus = $value['Skus'][0];
 
+        $shopSku = 'Pending';
+        if (isset($skus['ShopSku'])) {
+          $shopSku = $skus['ShopSku'];
+        }
+
+        $status = '';
+        if (!isset($skus['Images']) || strlen(implode($skus['Images'])) == 0) {
+          $status = 'No image';
+        } else if ($skus['price'] != round($skus['price'], 0, PHP_ROUND_HALF_UP)) {
+          $status = 'Price not rounded';
+        } else if ($skus['quantity'] == 0) {
+          $status = 'Zero stock';
+        }
+
         $row = array(
           'model' => $skus['SellerSku'],
-          'sku' => $skus['ShopSku'],
-          'status' => $skus['Status'],
+          'sku' => $shopSku,
+          'status' => $status,
           'quantity' => $skus['quantity'],
           'price' => $skus['price'],
         );
@@ -268,6 +307,7 @@ class ModelToolStoreSync extends Model {
 
   public function lzCreateProduct($userid, $apikey, $sku) {
     $this->load->model('catalog/product');
+    $this->load->model('tool/image');
 
     $p = $this->getProducts(array('filter_model' => $sku))[0];
     $pi = $this->model_catalog_product->getProductImages($p['product_id']);
@@ -294,12 +334,14 @@ class ModelToolStoreSync extends Model {
     }
     $short_description = $nodes[0];
     $xmlattr->addChild('short_description', $short_description);
-    $xmlattr->addChild('brand', $p['manufacturer']);
+    // -- NOTE: Default brand is Arduino
+    // $xmlattr->addChild('brand', $p['manufacturer']);
+    $xmlattr->addChild('brand', 'Arduino');
     $xmlattr->addChild('model', $sku);
     $xmlattr->addChild('warranty', '7 Days');
     $xmlattr->addChild('warranty_type', 'No Warranty');
 
-    $lzprice = round($p['price'] + (0.0571 * $p['price']) + 140.0, 2, PHP_ROUND_HALF_UP);
+    $lzprice = round($p['price'] + (0.0571 * $p['price']) + 140.0, 0, PHP_ROUND_HALF_UP);
 
     $xmlsku = $xmlproduct->addChild('Skus')->addChild('Sku');
     $xmlsku->addChild('SellerSku', $p['model']);
@@ -313,7 +355,9 @@ class ModelToolStoreSync extends Model {
     if (count($pi) > 0) {
       $xmli = $xmlsku->addChild('Images');
       foreach($pi as $im) {
-        $xmli->addChild('Image', $this->config->get('config_url') . 'image/' . $im['image']);
+        //https://circuit.rocks/image/cache/product/rain-and-steam-sensor/rain-steam-sensor-spm01021s-a7889-500x500.jpg
+        // TODO(ncapule): Remove hardcode
+        $xmli->addChild('Image', $this->model_tool_image->resize($im['image'], 500, 500));
       }
     }
 

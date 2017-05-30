@@ -104,6 +104,7 @@ class ControllerModuleStoreSync extends Controller {
     $data['sort_quantity'] = $this->url->link('module/store_sync', 'token=' . $this->session->data['token'] . $url . '&sort=quantity', 'SSL');
     $data['sort_lz_quantity'] = $this->url->link('module/store_sync', 'token=' . $this->session->data['token'] . $url . '&sort=lz_quantity', 'SSL');
     $data['sort_lz_sku'] = $this->url->link('module/store_sync', 'token=' . $this->session->data['token'] . $url . '&sort=lz_sku', 'SSL');
+    $data['sort_lz_status'] = $this->url->link('module/store_sync', 'token=' . $this->session->data['token'] . $url . '&sort=lz_status', 'SSL');
     $data['sort_lz_sync_status'] = $this->url->link('module/store_sync', 'token=' . $this->session->data['token'] . $url . '&sort=lz_sync_status', 'SSL');
 
     $data['header'] = $this->load->controller('common/header');
@@ -250,7 +251,8 @@ class ControllerModuleStoreSync extends Controller {
       $userid = $setting['store_sync_lzusername'];
       $apikey = $setting['store_sync_lzapikey'];
 
-      $this->model_tool_store_sync->lzSyncProducts($userid, $apikey);
+      // $this->model_tool_store_sync->lzSyncProducts($userid, $apikey);
+      $this->model_tool_store_sync->sync($userid, $apikey);
 
       $setting['store_sync_lzlast_sync'] = (new DateTime())->format('Y-m-d H:i:s');
       $this->model_setting_setting->editSetting('store_sync', $setting);
