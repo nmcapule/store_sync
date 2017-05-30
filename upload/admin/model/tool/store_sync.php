@@ -27,7 +27,6 @@ class ModelToolStoreSync extends Model {
               lp.quantity as lz_quantity,
               lp.sku as lz_sku,
               CASE
-                WHEN lp.quantity != p.quantity THEN 'Desync quantity'
                 WHEN lp.sku IS NULL THEN 'Not uploaded'
                 ELSE lp.status
               END as lz_status,
@@ -182,12 +181,9 @@ class ModelToolStoreSync extends Model {
     $xmlsku = $xmlskus->addChild('Sku');
     $xmlsku->addChild('SellerSku', $sku);
     $xmlsku->addChild('Quantity', $quantity);
-    $xmlsku->addChild('Price');
-    $xmlsku->addChild('SalePrice');
-    $xmlsku->addChild('SaleStartDate');
-    $xmlsku->addChild('SaleEndDate');
 
     $payload = $xml->asXML();
+    error_log($payload);
 
     $ret = $this->query($userid, $apikey, 'UpdatePriceQuantity', 0, 100, $payload);
     if (isset($ret['ErrorResponse'])) {
@@ -197,7 +193,7 @@ class ModelToolStoreSync extends Model {
       $this->db->query("UPDATE  " . DB_PREFIX . "lazada_product SET quantity = '".(int)$quantity."' WHERE model = '".$sku."'");
     }
 
-    return $ret
+    return $ret;
   }
 
   public function sync($userid, $apikey) {
@@ -305,6 +301,40 @@ class ModelToolStoreSync extends Model {
     $this->sync($userid, $apikey);
   }
 
+  public function lzSyncImagePrice($userid, $apikey, $sku) {
+    $this->load->model('catalog/product');
+    $this->load->model('tool/image');
+
+    $p = $this->getProducts(array('filter_model' => $sku))[0];
+    $pi = $this->model_catalog_product->getProductImages($p['product_id']);
+
+    $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"utf-8\" ?><Request></Request>");
+    $xmlproduct = $xml->addChild('Product');
+
+    $lzprice = round($p['price'] + (0.0571 * $p['price']) + 140.0, 0, PHP_ROUND_HALF_UP);
+
+    $xmlsku = $xmlproduct->addChild('Skus')->addChild('Sku');
+    $xmlsku->addChild('SellerSku', $p['model']);
+    $xmlsku->addChild('quantity', $p['quantity']);
+    $xmlsku->addChild('price', $lzprice);
+    if (count($pi) > 0) {
+      $xmli = $xmlsku->addChild('Images');
+      foreach($pi as $im) {
+        $xmli->addChild('Image', $this->model_tool_image->resize($im['image'], 500, 500));
+      }
+    }
+
+    $payload = $xml->asXML();
+
+    $ret = $this->query($userid, $apikey, 'UpdateProduct', 0, 100, $payload);
+    if (isset($ret['ErrorResponse'])) {
+      error_log(print_r($ret['ErrorResponse'], true));
+    } else {
+      $this->db->query("UPDATE  " . DB_PREFIX . "lazada_product SET quantity = '".$p['quantity']."', status = 'Pending Lazada Sync' WHERE model = '".$sku."'");
+    }
+    return $ret;
+  }
+
   public function lzCreateProduct($userid, $apikey, $sku) {
     $this->load->model('catalog/product');
     $this->load->model('tool/image');
@@ -355,8 +385,6 @@ class ModelToolStoreSync extends Model {
     if (count($pi) > 0) {
       $xmli = $xmlsku->addChild('Images');
       foreach($pi as $im) {
-        //https://circuit.rocks/image/cache/product/rain-and-steam-sensor/rain-steam-sensor-spm01021s-a7889-500x500.jpg
-        // TODO(ncapule): Remove hardcode
         $xmli->addChild('Image', $this->model_tool_image->resize($im['image'], 500, 500));
       }
     }

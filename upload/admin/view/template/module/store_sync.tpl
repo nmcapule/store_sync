@@ -79,15 +79,15 @@
                     </td>
                     -->
                     <td class="text-center" style="width:128px"><?php if ($sort == 'lz_sku') { ?>
-                      <a href="<?php echo $sort_lz_status; ?>" class="<?php echo strtolower($order); ?>">Lazada Status</a>
+                      <a href="<?php echo $sort_lz_status; ?>" class="<?php echo strtolower($order); ?>">Lazada Upload Status</a>
                       <?php } else { ?>
-                      <a href="<?php echo $sort_lz_status; ?>">Lazada Status</a>
+                      <a href="<?php echo $sort_lz_status; ?>">Lazada Upload Status</a>
                       <?php } ?>
                     </td>
                     <td class="text-center" style="width:96px"><?php if ($sort == 'lz_sync_status') { ?>
-                      <a href="<?php echo $sort_lz_sync_status; ?>" class="<?php echo strtolower($order); ?>">Lazada Action</a>
+                      <a href="<?php echo $sort_lz_sync_status; ?>" class="<?php echo strtolower($order); ?>">Action</a>
                       <?php } else { ?>
-                      <a href="<?php echo $sort_lz_sync_status; ?>">Lazada Action</a>
+                      <a href="<?php echo $sort_lz_sync_status; ?>">Action</a>
                       <?php } ?>
                     </td>
                   </tr>
@@ -120,6 +120,10 @@
                       <?php if ($product['lz_quantity'] == '') { ?>
                         <button class="btn btn-default oupload" name="<?php echo $product['model']?>">
                           <i class="fa fa-upload" aria-hidden="true"></i> Upload
+                        </button>
+                      <?php } else if ($product['lz_status'] == 'No image') { ?>
+                        <button class="btn btn-default osyncimageprice" name="<?php echo $product['model']?>">
+                          <i class="fa fa-upload text-warning" aria-hidden="true"></i> Image
                         </button>
                       <?php } else if ($product['lz_quantity'] != $product['quantity']) { ?>
                         <button class="btn btn-default osync" name="<?php echo $product['model']?>">
@@ -194,6 +198,25 @@ $('table tr td.ostatus button.osync').on('click', function() {
 
   $.ajax({
       url: 'index.php?route=module/store_sync/saveosync&token=<?php echo $token; ?>&sku='+sku,
+      dataType: 'json',
+      success: function(t) {
+        console.log(t);
+        btn.html('<i class="fa fa-check-circle text-success" aria-hidden="true"></i> Synced');
+      },
+      error: function() {
+        btn.html('<i class="fa fa-check-circle text-warning" aria-hidden="true"></i> Fail');
+      }
+  });
+});
+$('table tr td.ostatus button.osyncimageprice').on('click', function() {
+  $(this).attr('disabled', 'disabled');
+  $(this).text('Loading...');
+
+  var sku = $(this).attr('name');
+  var btn = $(this);
+
+  $.ajax({
+      url: 'index.php?route=module/store_sync/saveoimageprice&token=<?php echo $token; ?>&sku='+sku,
       dataType: 'json',
       success: function(t) {
         console.log(t);

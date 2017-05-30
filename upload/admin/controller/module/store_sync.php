@@ -308,6 +308,21 @@ class ControllerModuleStoreSync extends Controller {
     $this->response->setOutput(json_encode($result));
   }
 
+  public function saveoimageprice() {
+    $this->load->model('tool/store_sync');
+    $this->load->model('setting/setting');
+
+    $sku = $this->request->get['sku'];
+
+    $setting = $this->model_setting_setting->getSetting('store_sync');
+    $userid = $setting['store_sync_lzusername'];
+    $apikey = $setting['store_sync_lzapikey'];
+
+    $product = $this->model_tool_store_sync->lzSyncImagePrice($userid, $apikey, $sku);
+
+    $this->response->setOutput(json_encode($product));
+  }
+
   public function saveoupload() {
     $this->load->model('tool/store_sync');
     $this->load->model('setting/setting');
