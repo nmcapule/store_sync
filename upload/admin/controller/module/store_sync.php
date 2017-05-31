@@ -134,7 +134,7 @@ class ControllerModuleStoreSync extends Controller {
 
       // If more than an hour has passed, force downsync.
       // if (time() - $ts_lzlast_sync)
-      if (time() - $ts_lzlast_sync > 1800) {
+      if (time() - $ts_lzlast_sync > 3600) {
         $userid = $setting['store_sync_lzusername'];
         $apikey = $setting['store_sync_lzapikey'];
 

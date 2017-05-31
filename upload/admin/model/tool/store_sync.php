@@ -301,6 +301,18 @@ class ModelToolStoreSync extends Model {
     $this->sync($userid, $apikey);
   }
 
+  public function lzUploadImage($userid, $apikey, $url) {
+    $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"utf-8\" ?><Request></Request>");
+    $xmli = $xml->addChild('Image');
+    $xmli->addChild('Url', $url);
+
+    $payload = $xml->asXML();
+
+    $ret = $this->query($userid, $apikey, 'MigrateImage', 0, 100, $payload);
+
+    return $ret;
+  }
+
   public function lzSyncImagePrice($userid, $apikey, $sku) {
     $this->load->model('catalog/product');
     $this->load->model('tool/image');
@@ -320,7 +332,18 @@ class ModelToolStoreSync extends Model {
     if (count($pi) > 0) {
       $xmli = $xmlsku->addChild('Images');
       foreach($pi as $im) {
-        $xmli->addChild('Image', $this->model_tool_image->resize($im['image'], 500, 500));
+        // Upload image to lazada first.
+        $iret = $this->lzUploadImage($userid, $apikey, $this->model_tool_image->resize($im['image']));
+        if (isset($iret['ErrorResponse'])) {
+          error_log(print_r($iret['ErrorResponse'], true));
+          return $iret;
+        }
+
+        // Get lazada url.
+        $lzim = $iret['SuccessResponse']['Body']['Image']['Url'];
+
+        // Set image to lazada url.
+        $xmli->addChild('Image', $lzim, 500, 500);
       }
     }
 
@@ -332,6 +355,7 @@ class ModelToolStoreSync extends Model {
     } else {
       $this->db->query("UPDATE  " . DB_PREFIX . "lazada_product SET quantity = '".$p['quantity']."', status = 'Pending Lazada Sync' WHERE model = '".$sku."'");
     }
+
     return $ret;
   }
 
