@@ -333,7 +333,7 @@ class ModelToolStoreSync extends Model {
       $xmli = $xmlsku->addChild('Images');
       foreach($pi as $im) {
         // Upload image to lazada first.
-        $iret = $this->lzUploadImage($userid, $apikey, $this->model_tool_image->resize($im['image']));
+        $iret = $this->lzUploadImage($userid, $apikey, $this->model_tool_image->resize($im['image'], 500, 500));
         if (isset($iret['ErrorResponse'])) {
           error_log(print_r($iret['ErrorResponse'], true));
           return $iret;
@@ -343,7 +343,7 @@ class ModelToolStoreSync extends Model {
         $lzim = $iret['SuccessResponse']['Body']['Image']['Url'];
 
         // Set image to lazada url.
-        $xmli->addChild('Image', $lzim, 500, 500);
+        $xmli->addChild('Image', $lzim);
       }
     }
 
@@ -409,7 +409,18 @@ class ModelToolStoreSync extends Model {
     if (count($pi) > 0) {
       $xmli = $xmlsku->addChild('Images');
       foreach($pi as $im) {
-        $xmli->addChild('Image', $this->model_tool_image->resize($im['image'], 500, 500));
+        // Upload image to lazada first.
+        $iret = $this->lzUploadImage($userid, $apikey, $this->model_tool_image->resize($im['image'], 500, 500));
+        if (isset($iret['ErrorResponse'])) {
+          error_log(print_r($iret['ErrorResponse'], true));
+          return $iret;
+        }
+
+        // Get lazada url.
+        $lzim = $iret['SuccessResponse']['Body']['Image']['Url'];
+
+        // Set image to lazada url.
+        $xmli->addChild('Image', $lzim);
       }
     }
 
