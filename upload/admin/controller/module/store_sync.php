@@ -275,6 +275,12 @@ class ControllerModuleStoreSync extends Controller {
     $this->model_setting_setting->editSetting('store_sync', $setting);
   }
 
+  public function getproducts() {
+    $this->load->model('tool/store_sync');
+
+    $this->response->setOutput(json_encode($this->model_tool_store_sync->getProductModels()));
+  }
+
   public function saveoquantity() {
     $this->load->model('tool/store_sync');
     $this->load->model('setting/setting');

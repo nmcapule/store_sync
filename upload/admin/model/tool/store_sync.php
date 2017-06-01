@@ -15,6 +15,22 @@ class ModelToolStoreSync extends Model {
     $this->db->query($sql);
   }
 
+  public function getProductModels($data = array()) {
+    $products = $this->getProducts($data);
+
+    $ret = array();
+    foreach ($products as $p) {
+      array_push($ret, array(
+          'model' => $p['model'],
+          'quantity' => $p['quantity'],
+          'lz_quantity' => $p['lz_quantity'],
+          'lz_status' => $p['lz_status'],
+        ));
+    }
+
+    return $ret;
+  }
+
   public function getProducts($data = array()) {
     $sql = "SELECT
               p.product_id as product_id,
@@ -335,56 +351,63 @@ class ModelToolStoreSync extends Model {
     $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"utf-8\" ?><Request></Request>");
     $xmlproduct = $xml->addChild('Product');
 
-    $xmlattr = $xmlproduct->addChild('Attributes');
+    // Only do these things for inactive products!
+    if ($p['lz_status'] != 'SUCC: Active') {
+      $xmlattr = $xmlproduct->addChild('Attributes');
 
-    // Remove href links from description.
-    $doc = html_entity_decode($p['description']);
-    $doc = preg_replace('#<\/?a[^>]*>#', '', $doc);
-    $description = htmlentities($doc);
+      // Remove href links from description.
+      $doc = html_entity_decode($p['description']);
+      $doc = preg_replace('#<\/?a[^>]*>#', '', $doc);
+      $description = htmlentities($doc);
 
-    // Tokenize per paragraph.
-    $doc = preg_replace('#<p[^>]*>#', '|', $doc);
-    $doc = preg_replace('#&nbsp;#', ' ', $doc);
-    $docs = explode('|', $doc);
+      // Tokenize per paragraph.
+      $doc = preg_replace('#<p[^>]*>#', '|', $doc);
+      $doc = preg_replace('#&nbsp;#', ' ', $doc);
+      $docs = explode('|', $doc);
 
-    // Collect tokens whose length are > 20, presumably a short description.
-    $nodes = array();
-    foreach ($docs as $item) {
-      if (strlen(trim(strip_tags($item))) <= 20) {
-        continue;
+      // Collect tokens whose length are > 20, presumably a short description.
+      $nodes = array();
+      foreach ($docs as $item) {
+        if (strlen(trim(strip_tags($item))) <= 20) {
+          continue;
+        }
+        array_push($nodes, strip_tags($item));
       }
-      array_push($nodes, strip_tags($item));
-    }
 
-    // Get first matching token!
-    $short_description = $nodes[0];
-    $xmlattr->addChild('description', $description);
-    $xmlattr->addChild('short_description', $short_description);
+      // Get first matching token!
+      $short_description = $nodes[0];
+      $xmlattr->addChild('description', $description);
+      $xmlattr->addChild('short_description', $short_description);
+    }
 
     $lzprice = round($p['price'] + (0.0571 * $p['price']), 0, PHP_ROUND_HALF_UP);
 
     $xmlsku = $xmlproduct->addChild('Skus')->addChild('Sku');
     $xmlsku->addChild('SellerSku', $p['model']);
     $xmlsku->addChild('quantity', $p['quantity']);
-    $xmlsku->addChild('price', $lzprice);
 
-    // Only upload images if product does not have image.
-    if ($p['lz_status'] == 'ERR00: No image') {
-      if (count($pi) > 0) {
-        $xmli = $xmlsku->addChild('Images');
-        foreach($pi as $im) {
-          // Upload image to lazada first.
-          $iret = $this->lzUploadImage($userid, $apikey, $this->model_tool_image->resize($im['image'], 500, 500));
-          if (isset($iret['ErrorResponse'])) {
-            error_log(print_r($iret['ErrorResponse'], true));
-            return $iret;
+    // Only do these things for inactive products!
+    if ($p['lz_status'] != 'SUCC: Active') {
+      $xmlsku->addChild('price', $lzprice);
+
+      // Only upload images if product does not have image.
+      if ($p['lz_status'] == 'ERR00: No image') {
+        if (count($pi) > 0) {
+          $xmli = $xmlsku->addChild('Images');
+          foreach($pi as $im) {
+            // Upload image to lazada first.
+            $iret = $this->lzUploadImage($userid, $apikey, $this->model_tool_image->resize($im['image'], 500, 500));
+            if (isset($iret['ErrorResponse'])) {
+              error_log(print_r($iret['ErrorResponse'], true));
+              return $iret;
+            }
+
+            // Get lazada url.
+            $lzim = $iret['SuccessResponse']['Body']['Image']['Url'];
+
+            // Set image to lazada url.
+            $xmli->addChild('Image', $lzim);
           }
-
-          // Get lazada url.
-          $lzim = $iret['SuccessResponse']['Body']['Image']['Url'];
-
-          // Set image to lazada url.
-          $xmli->addChild('Image', $lzim);
         }
       }
     }

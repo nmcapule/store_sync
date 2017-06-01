@@ -146,6 +146,15 @@
             <div class="row">
               <div class="col-sm-6 text-left"><?php echo $pagination; ?></div>
             </div>
+            <div class="well">
+              <div class="row">
+                <button class="col-sm-12 btn btn-default oall">
+                  <i class="fa fa-upload" aria-hidden="true"></i> Fix Everything
+                </button>
+                <pre class="debug">Log goes here</pre>
+                <pre class="response">Response goes here</pre>
+              </div>
+            </div>
           </div>
           <div class="tab-pane" id="tab-2">
             <form action="<?php echo $action; ?>" method="post" enctype="multipart/form-data" id="form-featured" class="form-horizontal">
@@ -246,6 +255,60 @@ $('table tr td.ostatus button.oupload').on('click', function() {
         btn.html('<i class="fa fa-check-circle text-success" aria-hidden="true"></i> Synced');
       },
       error: function() {
+        btn.html('<i class="fa fa-check-circle text-warning" aria-hidden="true"></i> Fail');
+      }
+  });
+});
+$('button.oall').on('click', function() {
+  $(this).attr('disabled', 'disabled');
+  $(this).text('Loading...');
+
+  var sku = $(this).attr('name');
+  var btn = $(this);
+
+  function cbhell(i, p, all) {
+    if (i >= all.length) {
+      $('pre.debug').text('finished ' + all.length);
+      return;
+    }
+
+    $('pre.debug').text('on ' + i + ' out of ' + all.length + ':\n' + JSON.stringify(p, undefined, 2));
+
+    // setTimeout(function() {cbhell(i+1, all[i+1], all);}, (p['lz_status'] == 'SUCC: Active')?1000:0.1);
+
+    // If already active, do not update!
+    if (p['lz_status'] == 'SUCC: Active') {
+      cbhell(i+1, all[i+1], all);
+      return;
+    }
+
+    // Only update non actives.
+    $.ajax({
+        url: 'index.php?route=module/store_sync/saveoimageprice&token=<?php echo $token; ?>&sku='+p['model'],
+        dataType: 'json',
+        success: function(t) {
+          $('pre.response').text(t);
+          cbhell(i+1, all[i+1], all);
+        },
+        error: function(e) {
+          console.log(e);
+          $('pre.response').text(e);
+          cbhell(i+1, all[i+1], all);
+        }
+    });
+  }
+
+  $.ajax({
+      url: 'index.php?route=module/store_sync/getproducts&token=<?php echo $token; ?>',
+      dataType: 'json',
+      success: function(t) {
+        console.log(t);
+        $('pre.debug').text(JSON.stringify(t, undefined, 2));
+        cbhell(0, t[0], t);
+        btn.html('<i class="fa fa-check-circle text-success" aria-hidden="true"></i> Done!');
+      },
+      error: function(e) {
+        $('pre.debug').text(JSON.stringify(e, undefined, 2));
         btn.html('<i class="fa fa-check-circle text-warning" aria-hidden="true"></i> Fail');
       }
   });
