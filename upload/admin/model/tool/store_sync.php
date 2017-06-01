@@ -396,6 +396,8 @@ class ModelToolStoreSync extends Model {
       $this->db->query("UPDATE  " . DB_PREFIX . "lazada_product SET quantity = '".$p['quantity']."', status = 'Pending Lazada Sync' WHERE model = '".$sku."'");
     }
 
+    $ret['payload'] = $payload;
+
     return $ret;
   }
 
@@ -491,6 +493,9 @@ class ModelToolStoreSync extends Model {
 
       $this->db->query("INSERT INTO " . DB_PREFIX . "lazada_product (model, sku, status, quantity, price) VALUES (" . $row . ")");
     }
+
+    $ret['payload'] = $payload;
+
     return $ret;
   }
 
