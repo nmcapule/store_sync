@@ -134,15 +134,15 @@ class ControllerModuleStoreSync extends Controller {
 
       // If more than an hour has passed, force downsync.
       // if (time() - $ts_lzlast_sync)
-      if (time() - $ts_lzlast_sync > 3600) {
-        $userid = $setting['store_sync_lzusername'];
-        $apikey = $setting['store_sync_lzapikey'];
+      // if (time() - $ts_lzlast_sync > 3600) {
+      //   $userid = $setting['store_sync_lzusername'];
+      //   $apikey = $setting['store_sync_lzapikey'];
 
-        $this->model_tool_store_sync->sync($userid, $apikey);
+      //   $this->model_tool_store_sync->sync($userid, $apikey);
 
-        $setting['store_sync_lzlast_sync'] = (new DateTime())->format('Y-m-d H:i:s');
-        $this->model_setting_setting->editSetting('store_sync', $setting);
-      }
+      //   $setting['store_sync_lzlast_sync'] = (new DateTime())->format('Y-m-d H:i:s');
+      //   $this->model_setting_setting->editSetting('store_sync', $setting);
+      // }
     } else {
       $data['store_sync_lzlast_sync'] = '';
     }

@@ -7,6 +7,7 @@ class ModelToolStoreSync extends Model {
       `status` varchar(64) NOT NULL,
       `quantity` int(4) NOT NULL DEFAULT '0',
       `price` decimal(15,4) NOT NULL DEFAULT '0.0000',
+      `url` varchar(256) NOT NULL,
       PRIMARY KEY (`model`),
       KEY `sku` (`sku`)
     )";
@@ -27,7 +28,7 @@ class ModelToolStoreSync extends Model {
               lp.quantity as lz_quantity,
               lp.sku as lz_sku,
               CASE
-                WHEN lp.sku IS NULL THEN 'Not uploaded'
+                WHEN lp.sku IS NULL THEN 'ERR0x: No upload'
                 ELSE lp.status
               END as lz_status,
               CASE
@@ -210,12 +211,13 @@ class ModelToolStoreSync extends Model {
         "'" . $this->db->escape($p['status']) . "'",
         $this->db->escape($p['quantity']),
         $this->db->escape($p['price']),
+        "'" . $this->db->escape($p['url']) . "'",
       ));
 
       array_push($rows, '(' . $row . ')');
     }
 
-    $this->db->query("INSERT INTO " . DB_PREFIX . "lazada_product (model, sku, status, quantity, price) VALUES " . join(',', $rows));
+    $this->db->query("INSERT INTO " . DB_PREFIX . "lazada_product (model, sku, status, quantity, price, url) VALUES " . join(',', $rows));
   }
 
   public function lzProducts($userid, $apikey) {
@@ -236,13 +238,20 @@ class ModelToolStoreSync extends Model {
           $shopSku = $skus['ShopSku'];
         }
 
-        $status = '';
+        $status = 'SUCC: Active';
         if (!isset($skus['Images']) || strlen(implode($skus['Images'])) == 0) {
-          $status = 'No image';
+          $status = 'ERR00: No image';
         } else if ($skus['price'] != round($skus['price'], 0, PHP_ROUND_HALF_UP)) {
-          $status = 'Price not rounded';
+          $status = 'ERR01: Price not rounded';
         } else if ($skus['quantity'] == 0) {
-          $status = 'Zero stock';
+          $status = 'ERR02: Zero stock';
+        } else if (!isset($skus['Url'])) {
+          $status = 'ERR03: Not active';
+        }
+
+        $url = '';
+        if (isset($skus['Url'])) {
+          $url = $skus['Url'];
         }
 
         $row = array(
@@ -251,6 +260,7 @@ class ModelToolStoreSync extends Model {
           'status' => $status,
           'quantity' => $skus['quantity'],
           'price' => $skus['price'],
+          'url' => $url,
         );
 
         array_push($rows, $row);
@@ -323,27 +333,57 @@ class ModelToolStoreSync extends Model {
     $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"utf-8\" ?><Request></Request>");
     $xmlproduct = $xml->addChild('Product');
 
-    $lzprice = round($p['price'] + (0.0571 * $p['price']) + 140.0, 0, PHP_ROUND_HALF_UP);
+    $xmlattr = $xmlproduct->addChild('Attributes');
+
+    // Remove href links from description.
+    $doc = html_entity_decode($p['description']);
+    $doc = preg_replace('#<\/?a[^>]*>#', '', $doc);
+    $description = htmlentities($doc);
+
+    // Tokenize per paragraph.
+    $doc = preg_replace('#<p[^>]*>#', '|', $doc);
+    $doc = preg_replace('#&nbsp;#', ' ', $doc);
+    $docs = explode('|', $doc);
+
+    // Collect tokens whose length are > 20, presumably a short description.
+    $nodes = array();
+    foreach ($docs as $item) {
+      if (strlen(trim(strip_tags($item))) <= 20) {
+        continue;
+      }
+      array_push($nodes, strip_tags($item));
+    }
+
+    // Get first matching token!
+    $short_description = $nodes[0];
+    $xmlattr->addChild('description', $description);
+    $xmlattr->addChild('short_description', $short_description);
+
+    $lzprice = round($p['price'] + (0.0571 * $p['price']), 0, PHP_ROUND_HALF_UP);
 
     $xmlsku = $xmlproduct->addChild('Skus')->addChild('Sku');
     $xmlsku->addChild('SellerSku', $p['model']);
     $xmlsku->addChild('quantity', $p['quantity']);
     $xmlsku->addChild('price', $lzprice);
-    if (count($pi) > 0) {
-      $xmli = $xmlsku->addChild('Images');
-      foreach($pi as $im) {
-        // Upload image to lazada first.
-        $iret = $this->lzUploadImage($userid, $apikey, $this->model_tool_image->resize($im['image'], 500, 500));
-        if (isset($iret['ErrorResponse'])) {
-          error_log(print_r($iret['ErrorResponse'], true));
-          return $iret;
+
+    // Only upload images if product does not have image.
+    if ($p['status'] == 'ERR00: No image') {
+      if (count($pi) > 0) {
+        $xmli = $xmlsku->addChild('Images');
+        foreach($pi as $im) {
+          // Upload image to lazada first.
+          $iret = $this->lzUploadImage($userid, $apikey, $this->model_tool_image->resize($im['image'], 500, 500));
+          if (isset($iret['ErrorResponse'])) {
+            error_log(print_r($iret['ErrorResponse'], true));
+            return $iret;
+          }
+
+          // Get lazada url.
+          $lzim = $iret['SuccessResponse']['Body']['Image']['Url'];
+
+          // Set image to lazada url.
+          $xmli->addChild('Image', $lzim);
         }
-
-        // Get lazada url.
-        $lzim = $iret['SuccessResponse']['Body']['Image']['Url'];
-
-        // Set image to lazada url.
-        $xmli->addChild('Image', $lzim);
       }
     }
 
@@ -374,20 +414,31 @@ class ModelToolStoreSync extends Model {
 
     $xmlattr = $xmlproduct->addChild('Attributes');
     $xmlattr->addChild('name', $p['name']);
-    $xmlattr->addChild('description', $p['description']);
+
+    // Remove href links from description.
     $doc = html_entity_decode($p['description']);
-    $doc = preg_replace('#<p[^>]+>#', '|', $doc);
+    $doc = preg_replace('#<\/?a[^>]*>#', '', $doc);
+    $description = htmlentities($doc);
+
+    // Tokenize per paragraph.
+    $doc = preg_replace('#<p[^>]*>#', '|', $doc);
     $doc = preg_replace('#&nbsp;#', ' ', $doc);
     $docs = explode('|', $doc);
+
+    // Collect tokens whose length are > 20, presumably a short description.
     $nodes = array();
     foreach ($docs as $item) {
-      if (strlen(trim(strip_tags($item))) <= 0) {
+      if (strlen(trim(strip_tags($item))) <= 20) {
         continue;
       }
       array_push($nodes, strip_tags($item));
     }
+
+    // Get first matching token!
     $short_description = $nodes[0];
+    $xmlattr->addChild('description', $description);
     $xmlattr->addChild('short_description', $short_description);
+
     // -- NOTE: Default brand is Arduino
     // $xmlattr->addChild('brand', $p['manufacturer']);
     $xmlattr->addChild('brand', 'Arduino');
@@ -395,7 +446,7 @@ class ModelToolStoreSync extends Model {
     $xmlattr->addChild('warranty', '7 Days');
     $xmlattr->addChild('warranty_type', 'No Warranty');
 
-    $lzprice = round($p['price'] + (0.0571 * $p['price']) + 140.0, 0, PHP_ROUND_HALF_UP);
+    $lzprice = round($p['price'] + (0.0571 * $p['price']), 0, PHP_ROUND_HALF_UP);
 
     $xmlsku = $xmlproduct->addChild('Skus')->addChild('Sku');
     $xmlsku->addChild('SellerSku', $p['model']);

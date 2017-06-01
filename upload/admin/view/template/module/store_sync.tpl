@@ -121,7 +121,7 @@
                         <button class="btn btn-default oupload" name="<?php echo $product['model']?>">
                           <i class="fa fa-upload" aria-hidden="true"></i> Upload
                         </button>
-                      <?php } else if ($product['lz_status'] == 'No image') { ?>
+                      <?php } else if ($product['lz_status'] == 'ERR00: No image') { ?>
                         <button class="btn btn-default osyncimageprice" name="<?php echo $product['model']?>">
                           <i class="fa fa-upload text-warning" aria-hidden="true"></i> Image
                         </button>
