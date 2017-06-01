@@ -29,6 +29,8 @@ class ModelToolStoreSync extends Model {
               lp.sku as lz_sku,
               CASE
                 WHEN lp.sku IS NULL THEN 'ERR0x: No upload'
+                WHEN p.price <= 67 THEN 'ERR0x: Price less than Lazada minimum'
+                WHEN LENGTH(pd.description) < 25 THEN 'ERR0x: Product has invalid description'
                 ELSE lp.status
               END as lz_status,
               CASE
@@ -367,7 +369,7 @@ class ModelToolStoreSync extends Model {
     $xmlsku->addChild('price', $lzprice);
 
     // Only upload images if product does not have image.
-    if ($p['status'] == 'ERR00: No image') {
+    if ($p['lz_status'] == 'ERR00: No image') {
       if (count($pi) > 0) {
         $xmli = $xmlsku->addChild('Images');
         foreach($pi as $im) {
