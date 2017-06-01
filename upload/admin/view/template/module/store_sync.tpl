@@ -125,6 +125,10 @@
                         <button class="btn btn-default osyncimageprice" name="<?php echo $product['model']?>">
                           <i class="fa fa-upload text-warning" aria-hidden="true"></i> Image
                         </button>
+                      <?php } else if ($product['lz_status'] == 'ERR03: Not active') { ?>
+                        <button class="btn btn-default osyncimageprice" name="<?php echo $product['model']?>">
+                          <i class="fa fa-upload text-warning" aria-hidden="true"></i> Image
+                        </button>
                       <?php } else if ($product['lz_quantity'] != $product['quantity']) { ?>
                         <button class="btn btn-default osync" name="<?php echo $product['model']?>">
                           <i class="fa fa-refresh text-warning" aria-hidden="true"></i> Update
