@@ -276,15 +276,26 @@ $('button.oall').on('click', function() {
 
     // setTimeout(function() {cbhell(i+1, all[i+1], all);}, (p['lz_status'] == 'SUCC: Active')?1000:0.1);
 
+    // If pending update, do not update!
+    if (p['lz_status'] == 'Pending Lazada Sync') {
+      cbhell(i+1, all[i+1], all);
+      return;
+    }
+
     // If already active, do not update!
     if (p['lz_status'] == 'SUCC: Active') {
       cbhell(i+1, all[i+1], all);
       return;
     }
 
+    var url = 'index.php?route=module/store_sync/saveoimageprice&token=<?php echo $token; ?>&sku='+p['model'];
+    if (p['lz_status'] == 'SUCC: Active') {
+      url = 'index.php?route=module/store_sync/saveoquantity&token=<?php echo $token; ?>&sku='+p['model'];
+    }
+
     // Only update non actives.
     $.ajax({
-        url: 'index.php?route=module/store_sync/saveoimageprice&token=<?php echo $token; ?>&sku='+p['model'],
+        url: url,
         dataType: 'json',
         success: function(t) {
           $('pre.response').text(JSON.stringify(t,undefined,2));
