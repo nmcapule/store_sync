@@ -287,12 +287,12 @@ $('button.oall').on('click', function() {
         url: 'index.php?route=module/store_sync/saveoimageprice&token=<?php echo $token; ?>&sku='+p['model'],
         dataType: 'json',
         success: function(t) {
-          $('pre.response').text(t);
+          $('pre.response').text(JSON.stringify(t,undefined,2));
           cbhell(i+1, all[i+1], all);
         },
         error: function(e) {
           console.log(e);
-          $('pre.response').text(e);
+          $('pre.response').text(JSON.stringify(e,undefined,2));
           cbhell(i+1, all[i+1], all);
         }
     });
