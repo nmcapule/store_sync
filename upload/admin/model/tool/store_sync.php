@@ -244,7 +244,7 @@ class ModelToolStoreSync extends Model {
 
     $lzp = $this->lzProduct($userid, $apikey, $sku);
 
-    if (!isset(lzp)) {
+    if (!isset($lzp)) {
       return NULL;
     }
 
