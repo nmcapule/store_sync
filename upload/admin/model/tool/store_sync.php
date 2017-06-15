@@ -192,6 +192,9 @@ class ModelToolStoreSync extends Model {
     return $query->row['total'];
   }
 
+  // savequantity does all of these things to a single sku:
+  // 1. Update cached lazada products (table: oc_lazada_product)
+  // 2. Update lazada product quantity (savequantity)
   public function savequantity($userid, $apikey, $sku, $quantity) {
     // Make request
     $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"utf-8\" ?><Request></Request>");
@@ -215,8 +218,58 @@ class ModelToolStoreSync extends Model {
     return $ret;
   }
 
+  // calcquantity returns the true quantity of a lazada-opencart product by
+  // combining the diff of the cached vs current lazada quantity and
+  // diffing to the opencart quantity.
+  //
+  // Upon returning, the user of the call should always:
+  // 1. Update cached lazada products (table: oc_lazada_product)
+  // 2. Update opencart product quantity (table: oc_product)
+  // 3. Update lazada product quantity (savequantity)
+  //
+  // See syncquantity() that does all three above.
+  public function calcquantity($userid, $apikey, $sku) {
+    $ps = $this->getProducts(array('filter_model' => $sku));
+    if (count($ps) == 0) {
+      return NULL;
+    }
+
+    $p = $ps[0];
+
+    // $quantity = get current opencart quantity
+    $quantity = $p['quantity'];
+
+    // $lzcached = get cached lazada quantity
+    $lzcached = $p['lz_quantity'];
+
+    $lzp = $this->lzProduct($userid, $apikey, $sku);
+
+    if (!$isset(lzp)) {
+      return NULL;
+    }
+
+    // $lzcurrent = get current lazada quantity
+    $lzcurrent = $lzp['quantity'];
+
+    $lzdiff = $lzcached - $lzcurrent;
+
+    return $quantity - $lzdiff;
+  }
+
+  // syncquantity does all of these things to a single sku:
+  // 1. Update cached lazada products (table: oc_lazada_product)
+  // 2. Update opencart product quantity (table: oc_product)
+  // 3. Update lazada product quantity (savequantity)
+  public function syncquantity($userid, $apikey, $sku, $quantity) {
+    // Updates both lazada and cached lazada.
+    $this->savequantity($userid, $apikey, $sku, $quantity)
+
+    // Update opencart quantity.
+    $this->db->query("UPDATE  " . DB_PREFIX . "product SET quantity = '".(int)$quantity."' WHERE model = '".$sku."'");
+  }
+
   public function sync($userid, $apikey) {
-    // Drop everything from table
+    // Drop everything from cached lazada products table.
     $this->db->query("DELETE FROM " . DB_PREFIX . "lazada_product");
 
     $products = $this->lzProducts($userid, $apikey);
@@ -235,7 +288,54 @@ class ModelToolStoreSync extends Model {
       array_push($rows, '(' . $row . ')');
     }
 
+    // Insert updated lazada products to cached lazada products table.
     $this->db->query("INSERT INTO " . DB_PREFIX . "lazada_product (model, sku, status, quantity, price, url) VALUES " . join(',', $rows));
+  }
+
+  public function lzProduct($userid, $apikey, $sku) {
+    $rows = array();
+
+    $c = $this->query($userid, $apikey, 'GetProducts', 0, 100, '', $sku);
+
+    foreach ($c['SuccessResponse']['Body']['Products'] as $key => $value) {
+      $skus = $value['Skus'][0];
+
+      $shopSku = 'Pending';
+      if (isset($skus['ShopSku'])) {
+        $shopSku = $skus['ShopSku'];
+      }
+
+      $status = 'SUCC: Active';
+      if (!isset($skus['Images']) || strlen(implode($skus['Images'])) == 0) {
+        $status = 'ERR00: No image';
+      } else if ($skus['price'] != round($skus['price'], 0, PHP_ROUND_HALF_UP)) {
+        $status = 'ERR01: Price not rounded';
+      } else if ($skus['quantity'] == 0) {
+        $status = 'ERR02: Zero stock';
+      } else if (!isset($skus['Url'])) {
+        $status = 'ERR03: Not active';
+      }
+
+      $url = '';
+      if (isset($skus['Url'])) {
+        $url = $skus['Url'];
+      }
+
+      $row = array(
+        'model' => $skus['SellerSku'],
+        'sku' => $shopSku,
+        'status' => $status,
+        'quantity' => $skus['quantity'],
+        'price' => $skus['price'],
+        'url' => $url,
+      );
+
+      if ($skus['SellerSku'] == $sku) {
+        return $row;
+      }
+    }
+
+    return NULL;
   }
 
   public function lzProducts($userid, $apikey) {
@@ -524,7 +624,7 @@ class ModelToolStoreSync extends Model {
     return $ret;
   }
 
-  public function query($user, $key, $action, $offset=0, $limit=100, $payload='') {
+  public function query($user, $key, $action, $offset=0, $limit=100, $payload='', $search='') {
     $now = new DateTime();
 
     $parameters = array(
@@ -537,6 +637,10 @@ class ModelToolStoreSync extends Model {
       'Timestamp' => $now->format(DateTime::ISO8601)
     );
     ksort($parameters);
+
+    if (strlen($search) > 0) {
+      $parameters['Search'] = $search;
+    }
 
     // URL encode the parameters.
     $encoded = array();

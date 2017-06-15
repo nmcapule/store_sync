@@ -309,14 +309,32 @@ $('button.oall').on('click', function() {
     });
   }
 
+  function cbhell_level1() {
+    $.ajax({
+        url: 'index.php?route=module/store_sync/getproducts&token=<?php echo $token; ?>',
+        dataType: 'json',
+        success: function(t) {
+          console.log(t);
+          $('pre.debug').text(JSON.stringify(t, undefined, 2));
+          cbhell(0, t[0], t);
+          btn.html('<i class="fa fa-check-circle text-success" aria-hidden="true"></i> Done?');
+        },
+        error: function(e) {
+          $('pre.debug').text(JSON.stringify(e, undefined, 2));
+          btn.html('<i class="fa fa-check-circle text-warning" aria-hidden="true"></i> Fail');
+        }
+    });
+  }
+
+  // Sync first
   $.ajax({
-      url: 'index.php?route=module/store_sync/getproducts&token=<?php echo $token; ?>',
+      url: 'index.php?route=module/store_sync/saveosyncall&token=<?php echo $token; ?>',
       dataType: 'json',
       success: function(t) {
         console.log(t);
         $('pre.debug').text(JSON.stringify(t, undefined, 2));
-        cbhell(0, t[0], t);
-        btn.html('<i class="fa fa-check-circle text-success" aria-hidden="true"></i> Done!');
+        cbhell_level1(0, t[0], t);
+        btn.html('<i class="fa fa-check-circle text-success" aria-hidden="true"></i> Downsync Done. Please wait.');
       },
       error: function(e) {
         $('pre.debug').text(JSON.stringify(e, undefined, 2));

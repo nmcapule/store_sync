@@ -314,6 +314,20 @@ class ControllerModuleStoreSync extends Controller {
     $this->response->setOutput(json_encode($result));
   }
 
+  public function saveosyncall() {
+    $this->load->model('setting/setting');
+    $this->load->model('tool/store_sync');
+
+    $setting = $this->model_setting_setting->getSetting('store_sync');
+    $userid = $setting['store_sync_lzusername'];
+    $apikey = $setting['store_sync_lzapikey'];
+
+    $this->model_tool_store_sync->sync($userid, $apikey);
+
+    $setting['store_sync_lzlast_sync'] = (new DateTime())->format('Y-m-d H:i:s');
+    $this->model_setting_setting->editSetting('store_sync', $setting);
+  }
+
   public function saveoimageprice() {
     $this->load->model('tool/store_sync');
     $this->load->model('setting/setting');
@@ -342,6 +356,37 @@ class ControllerModuleStoreSync extends Controller {
     $product = $this->model_tool_store_sync->lzCreateProduct($userid, $apikey, $sku);
 
     $this->response->setOutput(json_encode($product));
+  }
+
+  public function calcquantity() {
+    $this->load->model('tool/store_sync');
+    $this->load->model('setting/setting');
+
+    $sku = $this->request->get['sku'];
+
+    $setting = $this->model_setting_setting->getSetting('store_sync');
+    $userid = $setting['store_sync_lzusername'];
+    $apikey = $setting['store_sync_lzapikey'];
+
+    $result = $this->model_tool_store_sync->calcquantity($userid, $apikey, $sku);
+
+    $this->response->setOutput(json_encode($result));
+  }
+
+  public function syncquantity() {
+    $this->load->model('tool/store_sync');
+    $this->load->model('setting/setting');
+
+    $sku = $this->request->get['sku'];
+    $quantity = $this->request->get['value'];
+
+    $setting = $this->model_setting_setting->getSetting('store_sync');
+    $userid = $setting['store_sync_lzusername'];
+    $apikey = $setting['store_sync_lzapikey'];
+
+    $result = $this->model_tool_store_sync->syncquantity($userid, $apikey, $sku, $quantity);
+
+    $this->response->setOutput(json_encode($result));
   }
 
   protected function validate() {
