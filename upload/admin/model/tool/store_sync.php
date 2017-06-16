@@ -219,7 +219,7 @@ class ModelToolStoreSync extends Model {
       }
 
       // Save changes to local
-      $this->db->query("UPDATE  " . DB_PREFIX . "lazada_product SET quantity = '".(int)$quantity."', SET available = '".(int)$available."' WHERE model = '".$sku."'");
+      $this->db->query("UPDATE  " . DB_PREFIX . "lazada_product SET quantity = '".(int)$quantity."', available = '".(int)$available."' WHERE model = '".$sku."'");
     }
 
     return $ret;
