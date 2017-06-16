@@ -198,7 +198,7 @@ class ModelToolStoreSync extends Model {
   // savequantity does all of these things to a single sku:
   // 1. Update cached lazada products (table: oc_lazada_product)
   // 2. Update lazada product quantity (savequantity)
-  public function savequantity($userid, $apikey, $sku, $quantity) {
+  public function savequantity($userid, $apikey, $sku, $quantity, $available = NULL) {
     // Make request
     $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"utf-8\" ?><Request></Request>");
     $xmlskus = $xml->addChild('Product')->addChild('Skus');
@@ -214,8 +214,12 @@ class ModelToolStoreSync extends Model {
     if (isset($ret['ErrorResponse'])) {
       error_log(print_r($ret['ErrorResponse'], true));
     } else {
+      if (!isset($available)) {
+        $available = $quantity;
+      }
+
       // Save changes to local
-      $this->db->query("UPDATE  " . DB_PREFIX . "lazada_product SET quantity = '".(int)$quantity."' WHERE model = '".$sku."'");
+      $this->db->query("UPDATE  " . DB_PREFIX . "lazada_product SET quantity = '".(int)$quantity."', SET available = '".(int)$available."' WHERE model = '".$sku."'");
     }
 
     return $ret;
