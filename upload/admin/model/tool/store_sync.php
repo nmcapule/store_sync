@@ -25,6 +25,7 @@ class ModelToolStoreSync extends Model {
           'model' => $p['model'],
           'quantity' => $p['quantity'],
           'lz_quantity' => $p['lz_quantity'],
+          'lz_available' => $p['lz_available'],
           'lz_status' => $p['lz_status'],
         ));
     }
@@ -243,8 +244,6 @@ class ModelToolStoreSync extends Model {
 
     // $lzcached = get cached lazada available
     $lzcached = $p['lz_available'];
-    // $lzcachedstock is the amount of reserved + available inventory of item in cached lazada.
-    $lzcachedstock = $p['lz_quantity'];
 
     $lzp = $this->lzProduct($userid, $apikey, $sku);
 
@@ -254,9 +253,6 @@ class ModelToolStoreSync extends Model {
 
     // $lzcurrent = get current lazada available
     $lzcurrent = $lzp['available'];
-
-    // $lzcurrentstock is the amount of reserved + available inventory of item in lazada.
-    $lzcurrentstock = $lzp['quantity'];
 
     // $lzdiff is the amount of sold items in lazada from last sync time until current time.
     $lzdiff = $lzcached - $lzcurrent;
