@@ -392,13 +392,13 @@ class ControllerModuleStoreSync extends Controller {
 
     $sku = $this->request->get['sku'];
     $quantity = $this->request->get['quantity'];
-    $lzavailable = $this->request->get['lz_available'];
+    $lzquantity = $this->request->get['lz_quantity'];
 
     $setting = $this->model_setting_setting->getSetting('store_sync');
     $userid = $setting['store_sync_lzusername'];
     $apikey = $setting['store_sync_lzapikey'];
 
-    $result = $this->model_tool_store_sync->syncquantity($userid, $apikey, $sku, $quantity, $lzavailable);
+    $result = $this->model_tool_store_sync->syncquantity($userid, $apikey, $sku, $quantity, $lzquantity);
 
     $this->response->setOutput(json_encode($result));
   }

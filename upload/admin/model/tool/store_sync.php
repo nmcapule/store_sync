@@ -278,12 +278,12 @@ class ModelToolStoreSync extends Model {
   // 1. Update cached lazada products (table: oc_lazada_product)
   // 2. Update opencart product quantity (table: oc_product)
   // 3. Update lazada product quantity (savequantity)
-  public function syncquantity($userid, $apikey, $sku, $quantity, $lzavailable) {
+  public function syncquantity($userid, $apikey, $sku, $ocquantity, $lzquantity) {
     // Updates both lazada and cached lazada.
-    $this->savequantity($userid, $apikey, $sku, $quantity + $lzavailable);
+    $this->savequantity($userid, $apikey, $sku, $lzquantity);
 
     // Update opencart quantity.
-    $this->db->query("UPDATE  " . DB_PREFIX . "product SET quantity = '".(int)$quantity."' WHERE model = '".$sku."'");
+    $this->db->query("UPDATE  " . DB_PREFIX . "product SET quantity = '".(int)$ocquantity."' WHERE model = '".$sku."'");
   }
 
   public function sync($userid, $apikey) {
