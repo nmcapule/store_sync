@@ -281,6 +281,19 @@ class ControllerModuleStoreSync extends Controller {
     $this->response->setOutput(json_encode($this->model_tool_store_sync->getProductModels()));
   }
 
+  public function getlzproducts() {
+    $this->load->model('tool/store_sync');
+    $this->load->model('setting/setting');
+
+    $setting = $this->model_setting_setting->getSetting('store_sync');
+    $userid = $setting['store_sync_lzusername'];
+    $apikey = $setting['store_sync_lzapikey'];
+
+    $result = $this->model_tool_store_sync->lzProducts($userid, $apikey);
+
+    $this->response->setOutput(json_encode($result));
+  }
+
   public function saveoquantity() {
     $this->load->model('tool/store_sync');
     $this->load->model('setting/setting');

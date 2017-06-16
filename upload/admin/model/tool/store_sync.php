@@ -296,6 +296,10 @@ class ModelToolStoreSync extends Model {
     $rows = array();
 
     $c = $this->query($userid, $apikey, 'GetProducts', 0, 100, '', $sku);
+    if (!isset($c['SuccessResponse'])) {
+      error_log(print_r($c, true));
+      return NULL;
+    }
 
     foreach ($c['SuccessResponse']['Body']['Products'] as $key => $value) {
       $skus = $value['Skus'][0];
@@ -636,11 +640,10 @@ class ModelToolStoreSync extends Model {
       'Format' => 'JSON',
       'Timestamp' => $now->format(DateTime::ISO8601)
     );
-    ksort($parameters);
-
     if (strlen($search) > 0) {
       $parameters['Search'] = $search;
     }
+    ksort($parameters);
 
     // URL encode the parameters.
     $encoded = array();
