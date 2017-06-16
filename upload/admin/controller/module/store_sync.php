@@ -295,19 +295,7 @@ class ControllerModuleStoreSync extends Controller {
   }
 
   public function saveoquantity() {
-    $this->load->model('tool/store_sync');
-    $this->load->model('setting/setting');
-
-    $quantity  = $this->request->get['value'];
-    $sku = $this->request->get['sku'];
-
-    $setting = $this->model_setting_setting->getSetting('store_sync');
-    $userid = $setting['store_sync_lzusername'];
-    $apikey = $setting['store_sync_lzapikey'];
-
-    $result = $this->model_tool_store_sync->savequantity($userid, $apikey, $sku, $quantity);
-
-    $this->response->setOutput(json_encode($result));
+    $this->saveosync();
   }
 
   public function saveosync() {
@@ -322,7 +310,7 @@ class ControllerModuleStoreSync extends Controller {
 
     $product = $this->model_tool_store_sync->getProducts(array('filter_model' => $sku))[0];
 
-    $result = $this->model_tool_store_sync->savequantity($userid, $apikey, $sku, $product['quantity']);
+    $result = $this->model_tool_store_sync->savequantity($userid, $apikey, $sku, $product['quantity'], $product['available']);
 
     $this->response->setOutput(json_encode($result));
   }
