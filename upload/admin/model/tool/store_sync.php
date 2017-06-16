@@ -6,6 +6,7 @@ class ModelToolStoreSync extends Model {
       `sku` varchar(64) NOT NULL,
       `status` varchar(64) NOT NULL,
       `quantity` int(4) NOT NULL DEFAULT '0',
+      `available` int(4) NOT NULL DEFAULT '0',
       `price` decimal(15,4) NOT NULL DEFAULT '0.0000',
       `url` varchar(256) NOT NULL,
       PRIMARY KEY (`model`),
@@ -42,6 +43,7 @@ class ModelToolStoreSync extends Model {
               p.price as price,
               p.status as status,
               lp.quantity as lz_quantity,
+              lp.available as lz_available,
               lp.sku as lz_sku,
               CASE
                 WHEN lp.sku IS NULL THEN 'ERR0x: No upload'
@@ -239,8 +241,10 @@ class ModelToolStoreSync extends Model {
     // $quantity = get current opencart quantity
     $quantity = $p['quantity'];
 
-    // $lzcached = get cached lazada quantity
-    $lzcached = $p['lz_quantity'];
+    // $lzcached = get cached lazada available
+    $lzcached = $p['lz_available'];
+    // $lzcachedstock is the amount of reserved + available inventory of item in cached lazada.
+    $lzcachedstock = $p['lz_quantity'];
 
     $lzp = $this->lzProduct($userid, $apikey, $sku);
 
@@ -248,12 +252,26 @@ class ModelToolStoreSync extends Model {
       return NULL;
     }
 
-    // $lzcurrent = get current lazada quantity
-    $lzcurrent = $lzp['quantity'];
+    // $lzcurrent = get current lazada available
+    $lzcurrent = $lzp['available'];
 
+    // $lzcurrentstock is the amount of reserved + available inventory of item in lazada.
+    $lzcurrentstock = $lzp['quantity'];
+
+    // $lzdiff is the amount of sold items in lazada from last sync time until current time.
     $lzdiff = $lzcached - $lzcurrent;
 
-    return $quantity - $lzdiff;
+    // $fxquantity is the fixed quantity of the product that should be in opencart.
+    $fxquantity = $quantity - $lzdiff;
+
+    // $fxlzquantity is the fixed quantity of the product that should be in lazada.
+    // lazada stock = opencart quantity + lazada reserved
+    $fxlzquantity = $fxquantity + ($lzp['quantity'] - $lzp['available']);
+
+    return array(
+      'opencart' => $fxquantity,
+      'lazada' => $fxlzquantity,
+    );
   }
 
   // syncquantity does all of these things to a single sku:
@@ -281,6 +299,7 @@ class ModelToolStoreSync extends Model {
         "'" . $this->db->escape($p['sku']) . "'",
         "'" . $this->db->escape($p['status']) . "'",
         $this->db->escape($p['quantity']),
+        $this->db->escape($p['available']),
         $this->db->escape($p['price']),
         "'" . $this->db->escape($p['url']) . "'",
       ));
@@ -289,7 +308,7 @@ class ModelToolStoreSync extends Model {
     }
 
     // Insert updated lazada products to cached lazada products table.
-    $this->db->query("INSERT INTO " . DB_PREFIX . "lazada_product (model, sku, status, quantity, price, url) VALUES " . join(',', $rows));
+    $this->db->query("INSERT INTO " . DB_PREFIX . "lazada_product (model, sku, status, quantity, available, price, url) VALUES " . join(',', $rows));
   }
 
   public function lzProduct($userid, $apikey, $sku) {
@@ -325,11 +344,17 @@ class ModelToolStoreSync extends Model {
         $url = $skus['Url'];
       }
 
+      $available = 0;
+      if (isset($skus['Available'])) {
+        $available = $skus['Available'];
+      }
+
       $row = array(
         'model' => $skus['SellerSku'],
         'sku' => $shopSku,
         'status' => $status,
         'quantity' => $skus['quantity'],
+        'available' => $available,
         'price' => $skus['price'],
         'url' => $url,
       );
@@ -376,11 +401,17 @@ class ModelToolStoreSync extends Model {
           $url = $skus['Url'];
         }
 
+        $available = 0;
+        if (isset($skus['Available'])) {
+          $available = $skus['Available'];
+        }
+
         $row = array(
           'model' => $skus['SellerSku'],
           'sku' => $shopSku,
           'status' => $status,
           'quantity' => $skus['quantity'],
+          'available' => $available,
           'price' => $skus['price'],
           'url' => $url,
         );
@@ -392,7 +423,7 @@ class ModelToolStoreSync extends Model {
     return $rows;
   }
 
-    // lzSyncProducts syncs product quantities from opencart to lazada.
+    // **DEPRECATED** lzSyncProducts syncs product quantities from opencart to lazada.
   public function lzSyncProducts($userid, $apikey) {
     $this->sync($userid, $apikey);
 
@@ -628,6 +659,7 @@ class ModelToolStoreSync extends Model {
     return $ret;
   }
 
+  // query serves as our gateway to querying Lazada.
   public function query($user, $key, $action, $offset=0, $limit=100, $payload='', $search='') {
     $now = new DateTime();
 
