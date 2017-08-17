@@ -718,8 +718,8 @@ class ModelToolStoreSync extends Model {
   }
 
   // setlocalquantity updates opencart product quantity (table: oc_product).
-  public function setlocalquantity($sku, $quantity) {
-    $this->db->query("UPDATE  " . DB_PREFIX . "product SET quantity = '".(int)$ocquantity."' WHERE model = '".$sku."'");
+  public function setlocalquantity($model, $quantity) {
+    return $this->db->query("UPDATE  " . DB_PREFIX . "product SET quantity = '".(int)$quantity."' WHERE model = '".$model."'");
   }
 
   // listlocalproducts lists all opencart products.

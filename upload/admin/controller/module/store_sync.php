@@ -393,12 +393,14 @@ class ControllerModuleStoreSync extends Controller {
 
   // setlocalquantity updates opencart product quantity.
   public function setlocalquantity() {
-    $sku = $this->request->get['sku'];
+    $this->load->model('tool/store_sync');
+    
+    $model = $this->request->get['model'];
     $quantity = $this->request->get['quantity'];
 
-    $result = $this->model_tool_store_sync->setlocalquantity($sku, $quantity);
+    $result = $this->model_tool_store_sync->setlocalquantity($model, $quantity);
 
-    $this->response->setOutput(json_encode($result));
+    $this->response->setOutput($result);
   }
 
   // listlocalproducts lists all opencart products.
