@@ -716,5 +716,59 @@ class ModelToolStoreSync extends Model {
 
     return json_decode($ret, true);
   }
+
+  // setlocalquantity updates opencart product quantity (table: oc_product).
+  public function setlocalquantity($sku, $quantity) {
+    $this->db->query("UPDATE  " . DB_PREFIX . "product SET quantity = '".(int)$ocquantity."' WHERE model = '".$sku."'");
+  }
+
+  // listlocalproducts lists all opencart products.
+  public function listlocalproducts($data = array()) {
+    $sql = "SELECT
+              p.product_id as product_id,
+              p.model as model,
+              p.quantity as quantity,
+              p.price as price";
+    $sql .= " FROM " . DB_PREFIX . "product p";
+    $sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd";
+    $sql .= "   ON (p.product_id = pd.product_id)";
+    $sql .= " WHERE pd.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+    $sql .= " GROUP BY p.product_id";
+
+    $sort_data = array(
+      'product_id',
+      'model',
+      'price',
+      'quantity',
+    );
+
+    if (isset($data['sort']) && in_array($data['sort'], $sort_data)) {
+      $sql .= " ORDER BY " . $data['sort'];
+    } else {
+      $sql .= " ORDER BY name";
+    }
+
+    if (isset($data['order']) && ($data['order'] == 'DESC')) {
+      $sql .= " DESC";
+    } else {
+      $sql .= " ASC";
+    }
+
+    if (isset($data['start']) || isset($data['limit'])) {
+      if ($data['start'] < 0) {
+        $data['start'] = 0;
+      }
+
+      if ($data['limit'] < 1) {
+        $data['limit'] = 20;
+      }
+
+      $sql .= " LIMIT " . (int)$data['start'] . "," . (int)$data['limit'];
+    }
+
+    $query = $this->db->query($sql);
+
+    return $query->rows;
+  }
 }
 ?>

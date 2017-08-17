@@ -391,6 +391,25 @@ class ControllerModuleStoreSync extends Controller {
     $this->response->setOutput(json_encode($result));
   }
 
+  // setlocalquantity updates opencart product quantity.
+  public function setlocalquantity() {
+    $sku = $this->request->get['sku'];
+    $quantity = $this->request->get['quantity'];
+
+    $result = $this->model_tool_store_sync->setlocalquantity($sku, $quantity);
+
+    $this->response->setOutput(json_encode($result));
+  }
+
+  // listlocalproducts lists all opencart products.
+  public function listlocalproducts() {
+    $this->load->model('tool/store_sync');
+
+    $result = $this->model_tool_store_sync->listlocalproducts();
+
+    $this->response->setOutput(json_encode($result));
+  }
+
   protected function validate() {
     if (!$this->user->hasPermission('modify', 'module/store_sync')) {
       $this->error['warning'] = $this->language->get('error_permission');
