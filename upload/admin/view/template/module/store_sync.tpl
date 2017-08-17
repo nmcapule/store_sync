@@ -27,9 +27,11 @@
         <?php if ($debug != '') { ?>
         <pre><?php echo $debug ?></pre>
         <?php } ?>
+        <pre>Disabled</pre>
+        <!--
         <ul class="nav nav-tabs">
-          <li class="active"><a href="#tab-1" data-toggle="tab"><?php echo $tab_general; ?></a></li>
-          <li><a href="#tab-2" data-toggle="tab"><?php echo $tab_lazada; ?></a></li>
+          <li><a href="#tab-1" data-toggle="tab"><?php echo $tab_general; ?></a></li>
+          <li class="active"><a href="#tab-2" data-toggle="tab"><?php echo $tab_lazada; ?></a></li>
         </ul>
         <div class="tab-content">
           <div class="tab-pane active" id="tab-1">
@@ -70,14 +72,6 @@
                       <a href="<?php echo $sort_quantity; ?>">Quantity</a>
                       <?php } ?>
                     </td>
-                    <!--
-                    <td class="text-center"><?php if ($sort == 'lz_quantity') { ?>
-                      <a href="<?php echo $sort_lz_quantity; ?>" class="<?php echo strtolower($order); ?>">Quantity - Lazada</a>
-                      <?php } else { ?>
-                      <a href="<?php echo $sort_lz_quantity; ?>">Quantity - Lazada</a>
-                      <?php } ?>
-                    </td>
-                    -->
                     <td class="text-center" style="width:128px"><?php if ($sort == 'lz_sku') { ?>
                       <a href="<?php echo $sort_lz_status; ?>" class="<?php echo strtolower($order); ?>">Lazada Upload Status</a>
                       <?php } else { ?>
@@ -104,17 +98,6 @@
                       <?php } ?>
                       <?php echo $product['quantity'] ?>
                     </td>
-                    <!--
-                    <td class="text-center oquant">
-                      <input type="number" class="formcontrol"
-                          <?php if ($product['lz_quantity'] == '') {?>
-                          disabled="disabled"
-                          <?php } ?>
-                          name="<?php echo $product['model']?>"
-                          value="<?php echo $product['lz_quantity'] ?>"
-                          placeholder="Not Available"/>
-                    </td>
-                    -->
                     <td class="text-left"><?php echo $product['lz_status'] ?></td>
                     <td class="text-center ostatus">
                       <?php if ($product['lz_quantity'] == '') { ?>
@@ -179,6 +162,7 @@
             </form>
           </div>
         </div>
+        -->
       </div>
     </div>
   </div>
