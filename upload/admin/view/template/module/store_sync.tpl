@@ -28,7 +28,6 @@
         <pre><?php echo $debug ?></pre>
         <?php } ?>
         <pre>Disabled</pre>
-        <!--
         <ul class="nav nav-tabs">
           <li><a href="#tab-1" data-toggle="tab"><?php echo $tab_general; ?></a></li>
           <li class="active"><a href="#tab-2" data-toggle="tab"><?php echo $tab_lazada; ?></a></li>
@@ -50,6 +49,8 @@
                 </div>
               </div>
             </div>
+            <pre>Disabled</pre>
+            <!--
             <div class="table-responsive">
               <table class="table table-bordered table-hover">
                 <thead>
@@ -126,9 +127,13 @@
                 </tbody>
               </table>
             </div>
+            -->
+            <!--
             <div class="row">
               <div class="col-sm-6 text-left"><?php echo $pagination; ?></div>
             </div>
+            -->
+            <!--
             <div class="well">
               <div class="row">
                 <button class="col-sm-12 btn btn-default oall">
@@ -138,6 +143,7 @@
                 <pre class="response">Response goes here</pre>
               </div>
             </div>
+            -->
           </div>
           <div class="tab-pane" id="tab-2">
             <form action="<?php echo $action; ?>" method="post" enctype="multipart/form-data" id="form-featured" class="form-horizontal">
@@ -155,14 +161,13 @@
               </div>
               <div class="form-group row">
                 <div class="col-sm-12 text-right">
-                  <a class="btn btn-default" href="<?php echo $sync ?>">Sync Now</a>
-                  <div>Synced Since: <?php echo $store_sync_lzlast_sync ?></div>
+                  <!-- <a class="btn btn-default" href="<?php echo $sync ?>">Sync Now</a> -->
+                  <!-- <div>Synced Since: <?php echo $store_sync_lzlast_sync ?></div> -->
                 </div>
               </div>
             </form>
           </div>
         </div>
-        -->
       </div>
     </div>
   </div>
